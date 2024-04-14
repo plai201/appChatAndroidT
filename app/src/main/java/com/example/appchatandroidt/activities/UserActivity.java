@@ -20,12 +20,13 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class UserActivity extends AppCompatActivity {
+public class UserActivity extends BaseActivity {
     private RecyclerView recyclerView;
     private UsersAdapter usersAdapter;
     private ProgressBar progressBar;
@@ -54,8 +55,9 @@ public class UserActivity extends AppCompatActivity {
         FirebaseUser firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
         if (firebaseUser != null) {
             DatabaseReference reference = FirebaseDatabase.getInstance().getReference("users");
+            Query query = reference.orderByChild("role").equalTo(0);
 
-            reference.addValueEventListener(new ValueEventListener() {
+            query.addValueEventListener(new ValueEventListener() {
                 @Override
                 public void onDataChange(@NonNull DataSnapshot snapshot) {
                     userList.clear();
