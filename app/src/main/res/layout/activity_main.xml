@@ -110,6 +110,22 @@
             android:src="@drawable/default_avatar"
             android:tint="@color/primary"/>
     </FrameLayout>
+    <FrameLayout
+        android:id="@+id/layoutSendImage3"
+        android:layout_width="140dp"
+        android:layout_height="60dp"
+        android:layout_marginRight="120dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/ic_list_friend_find"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:padding="3dp"
+            android:src="@drawable/ic_add_friend"
+            android:tint="@color/primary" />
+    </FrameLayout>
 
     <FrameLayout
         android:id="@+id/layoutSendImage2"
@@ -124,7 +140,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:padding="3dp"
-            android:src="@drawable/ic_add_friend"
+            android:src="@drawable/ic_search"
             android:tint="@color/primary" />
     </FrameLayout>
 

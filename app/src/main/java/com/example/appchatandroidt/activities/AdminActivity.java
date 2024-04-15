@@ -5,10 +5,12 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.ProgressBar;
+import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.AppCompatImageView;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -30,26 +32,36 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class AdminActivity extends AppCompatActivity {
+    private FirebaseAuth mAuth;
 
     private RecyclerView recyclerView;
     private UsersAdapter usersAdapter;
     private ProgressBar progressBar;
+    private AppCompatImageView imgDangXuat;
     private List<User> userList;
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-         setContentView(R.layout.activity_admin);
+        setContentView(R.layout.activity_admin);
 
 
+        mAuth = FirebaseAuth.getInstance();
         recyclerView = findViewById(R.id.user_recycler_view);
         progressBar = findViewById(R.id.progressBar);
+        imgDangXuat = findViewById(R.id.imgDangXuat);
 
         recyclerView.setHasFixedSize(true);
         recyclerView.setLayoutManager(new LinearLayoutManager(getApplicationContext()));
 
         userList = new ArrayList<>();
+        imgDangXuat.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dangXuat();
+            }
+        });
 
         readUsers();
 
@@ -107,5 +119,15 @@ public class AdminActivity extends AppCompatActivity {
             Log.e("UserActivity", "Người dùng chưa đăng nhập");
         }
 
+    }
+    private void dangXuat() {
+        mAuth.signOut();
+        Toast.makeText(this, "Đã đăng xuất", Toast.LENGTH_SHORT).show();
+
+        // Chuyển hướng đến màn hình đăng nhập
+        Intent intent = new Intent(AdminActivity.this, DangNhap.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
+        finish();
     }
 }

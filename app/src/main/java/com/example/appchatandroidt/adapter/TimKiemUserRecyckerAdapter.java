@@ -14,6 +14,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.example.appchatandroidt.R;
 import com.example.appchatandroidt.activities.ChatActivity;
+import com.example.appchatandroidt.activities.ViewFriendActivity;
 import com.example.appchatandroidt.models.User;
 import com.firebase.ui.database.FirebaseRecyclerAdapter;
 import com.firebase.ui.database.FirebaseRecyclerOptions;
@@ -64,10 +65,8 @@ public class TimKiemUserRecyckerAdapter extends RecyclerView.Adapter<TimKiemUser
         holder.itemView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                // Xử lý sự kiện khi item được click
-                // Ví dụ: mở màn hình chat với người này
-                Intent intent = new Intent(context, ChatActivity.class);
-                intent.putExtra("OtherUserId", user.getId());
+                Intent intent = new Intent(context, ViewFriendActivity.class);
+                intent.putExtra("userId", user.getId());
                 // Thêm các dữ liệu khác cần thiết vào intent
                 context.startActivity(intent);
             }

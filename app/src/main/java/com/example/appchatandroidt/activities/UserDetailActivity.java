@@ -1,7 +1,11 @@
 package com.example.appchatandroidt.activities;
 
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.MediaStore;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -16,6 +20,7 @@ import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -30,6 +35,8 @@ import com.example.appchatandroidt.models.Friends;
 import com.example.appchatandroidt.models.User;
 import com.firebase.ui.database.FirebaseRecyclerAdapter;
 import com.firebase.ui.database.FirebaseRecyclerOptions;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
@@ -38,8 +45,17 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.UploadTask;
 
-public class UserDetailActivity extends AppCompatActivity {
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+
+public class UserDetailActivity extends AppCompatActivity implements AdapterView.OnItemSelectedListener{
 
     private String userId;
     DatabaseReference mUserRef,mRef;
@@ -53,6 +69,12 @@ public class UserDetailActivity extends AppCompatActivity {
     private Spinner spinner;
     private ImageView imageUser;
     private ImageButton btnEdit, btnDelete;
+    private final static int PICK_IMAGE = 1;
+    private Uri imageUri;
+    private Bitmap selectedBitmap;
+    private String avatarUrl;
+    private String[] roles = {"Người dùng", "Admin"};
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -70,23 +92,7 @@ public class UserDetailActivity extends AppCompatActivity {
         btnDelete = findViewById(R.id.btnDelete);
         recyclerView = findViewById(R.id.friend_recycler_view_detail);
 
-        String[] roles = {"Admin", "Người dùng"};
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, roles);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinner.setAdapter(adapter);
 
-        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                String selectedRole = roles[position];
-                Toast.makeText(getApplicationContext(), "Selected Role: " + selectedRole, Toast.LENGTH_SHORT).show();
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {
-                // Do something when nothing is selected
-            }
-        });
 
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         mAuth = FirebaseAuth.getInstance();
@@ -99,7 +105,80 @@ public class UserDetailActivity extends AppCompatActivity {
         mUserRef = FirebaseDatabase.getInstance().getReference("users").child(userId);
         getUserDetails();
         loadFriends("");
+        imageUser.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent();
+                intent.setType("image/*");
+                intent.setAction(Intent.ACTION_GET_CONTENT);
+                startActivityForResult(intent, PICK_IMAGE);
+            }
+        });
 
+        btnEdit.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                updateUser(userId);
+            }
+        });
+
+
+    }
+    private void loadRole(){
+        spinner.setOnItemSelectedListener(this);
+
+        ArrayAdapter ad
+                = new ArrayAdapter(
+                this,
+                android.R.layout.simple_spinner_item,
+                roles);
+
+        // set simple layout resource file
+        // for each item of spinner
+        ad.setDropDownViewResource(
+                android.R.layout
+                        .simple_spinner_dropdown_item);
+
+        // Set the ArrayAdapter (ad) data on the
+        // Spinner which binds data to spinner
+        spinner.setAdapter(ad);
+    }
+
+    private int getIndexForRole(int userRole) {
+        // Vai trò 0 và 1 tương ứng với vị trí trong mảng roles
+        if (userRole == 0) {
+            return 0; // Người dùng
+        } else if (userRole == 1) {
+            return 1; // Admin
+        }
+        return -1;
+    }
+
+
+
+    private void updateUser(String userId){
+        FirebaseStorage storage = FirebaseStorage.getInstance();
+        StorageReference storageRef = storage.getReference();
+        if (selectedBitmap != null) {
+            uploadImageToFirebaseStorage(storageRef, userId);
+        }
+        HashMap<String,Object> hashMap = new HashMap<>();
+        hashMap.put("name",textName.getText().toString());
+        hashMap.put("email",textEmail.getText().toString());
+        hashMap.put("sdt",textPhone.getText().toString());
+        mUserRef.updateChildren(hashMap)
+                .addOnCompleteListener(new OnCompleteListener<Void>() {
+                    @Override
+                    public void onComplete(@NonNull Task<Void> task) {
+                        if (task.isSuccessful()) {
+                            // Cập nhật thành công
+                            Toast.makeText(getApplicationContext(), "Thông tin người dùng đã được cập nhật", Toast.LENGTH_SHORT).show();
+                        } else {
+                            // Xử lý khi cập nhật không thành công
+                            Toast.makeText(getApplicationContext(), "Có lỗi xảy ra. Vui lòng thử lại sau", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
     }
     private void loadFriends(String s){
         Query query = mRef.child(userId).orderByChild("name").startAt(s).endAt(s+"\uf8ff");
@@ -186,5 +265,67 @@ public class UserDetailActivity extends AppCompatActivity {
                 Toast.makeText(UserDetailActivity.this, "Đã xảy ra lỗi: " + databaseError.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
+    }
+    private void uploadImageToFirebaseStorage(StorageReference storageRef, String userId) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        selectedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
+        byte[] imageData = baos.toByteArray();
+
+
+        StorageReference imageRef = storageRef.child("avatars/" + userId + ".jpg");
+        UploadTask uploadTask = imageRef.putBytes(imageData);
+        uploadTask.addOnFailureListener(e -> {
+            Log.e("UPLOAD_IMAGE_ERROR", "Error uploading image: " + e.getMessage());
+            Toast.makeText(UserDetailActivity.this, "Lỗi khi tải ảnh lên. Vui lòng thử lại.", Toast.LENGTH_SHORT).show();
+        }).addOnSuccessListener(taskSnapshot -> {
+            imageRef.getDownloadUrl().addOnSuccessListener(uri -> {
+                avatarUrl = uri.toString();
+                HashMap<String,Object> hashMap = new HashMap<>();
+                hashMap.put("name",textName.getText().toString());
+                hashMap.put("email",textEmail.getText().toString());
+                hashMap.put("sdt",textPhone.getText().toString());
+                hashMap.put("avatarUrl", avatarUrl);
+                mUserRef.updateChildren(hashMap)
+                        .addOnCompleteListener(new OnCompleteListener<Void>() {
+                            @Override
+                            public void onComplete(@NonNull Task<Void> task) {
+                                if (task.isSuccessful()) {
+                                    // Cập nhật thành công
+                                    Toast.makeText(getApplicationContext(), "Thông tin người dùng đã được cập nhật", Toast.LENGTH_SHORT).show();
+                                } else {
+                                    // Xử lý khi cập nhật không thành công
+                                    Toast.makeText(getApplicationContext(), "Có lỗi xảy ra. Vui lòng thử lại sau", Toast.LENGTH_SHORT).show();
+                                }
+                            }
+                        });
+
+            });
+        });
+    }
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == PICK_IMAGE && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            imageUri = data.getData();
+            try {
+                selectedBitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), imageUri);
+                imageUser.setImageBitmap(selectedBitmap);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    @Override
+    public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+        Toast.makeText(getApplicationContext(),
+                        roles[position],
+                        Toast.LENGTH_LONG)
+                .show();
+    }
+
+    @Override
+    public void onNothingSelected(AdapterView<?> parent) {
+
     }
 }

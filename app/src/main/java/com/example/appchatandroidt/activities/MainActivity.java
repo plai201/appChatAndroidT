@@ -56,7 +56,7 @@ public class MainActivity extends BaseActivity {
     private AppCompatImageView imgDangXuat;
     private RoundedImageView imageViewAvatar;
     private AppCompatImageView buttonTimKiemView;
-    private FloatingActionButton buttonListUser;
+    private AppCompatImageView buttonListUser;
     private AppCompatImageView buttonListFriend;
 
     private DatabaseReference usersRef,messageRef;
@@ -86,7 +86,7 @@ public class MainActivity extends BaseActivity {
         imageViewAvatar = findViewById(R.id.imageProfile);
         imgDangXuat = findViewById(R.id.imgDangXuat);
         buttonTimKiemView = findViewById(R.id.ic_tim_kiem);
-        buttonListUser = findViewById(R.id.ic_list_user);
+        buttonListUser = findViewById(R.id.ic_list_friend_find);
         buttonListFriend = findViewById(R.id.ic_list_friend);
 
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -377,7 +377,7 @@ public class MainActivity extends BaseActivity {
                     Integer role = dataSnapshot.child("role").getValue(Integer.class);
                     // Kiểm tra và chuyển hướng dựa vào vai trò của người dùng
                     if (role != null) {
-                        if (role==1) {
+                        if (role == 1) {
                             Intent intent = new Intent(MainActivity.this, AdminActivity.class);
                             intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
                             startActivity(intent);
