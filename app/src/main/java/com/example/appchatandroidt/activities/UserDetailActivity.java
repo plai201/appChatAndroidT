@@ -1,5 +1,6 @@
 package com.example.appchatandroidt.activities;
 
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
@@ -21,6 +22,7 @@ import android.widget.Toast;
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -104,6 +106,7 @@ public class UserDetailActivity extends AppCompatActivity implements AdapterView
         mUser = mAuth.getCurrentUser();
         mUserRef = FirebaseDatabase.getInstance().getReference("users").child(userId);
         getUserDetails();
+        loadRole();
         loadFriends("");
         imageUser.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -118,12 +121,59 @@ public class UserDetailActivity extends AppCompatActivity implements AdapterView
         btnEdit.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                updateUser(userId);
+                updateUser2();
+            }
+        });
+        btnDelete.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showDeleteConfirmationDialog();
+            }
+        });
+    }
+    private void showDeleteConfirmationDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Xác nhận xóa");
+        builder.setMessage("Bạn có chắc chắn muốn xóa người dùng này?");
+
+        // Nút Xác nhận
+        builder.setPositiveButton("Xác nhận", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                // Gọi hàm xóa người dùng khi người dùng xác nhận
+                deleteUser();
             }
         });
 
+        // Nút Hủy
+        builder.setNegativeButton("Hủy", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                // Không làm gì khi người dùng chọn hủy
+                dialog.dismiss();
+            }
+        });
 
+        // Hiển thị AlertDialog
+        AlertDialog alertDialog = builder.create();
+        alertDialog.show();
     }
+
+    private void deleteUser() {
+
+        mUserRef.removeValue()
+                .addOnCompleteListener(new OnCompleteListener<Void>() {
+                    @Override
+                    public void onComplete(@NonNull Task<Void> task) {
+                        if (task.isSuccessful()) {
+                            Toast.makeText(getApplicationContext(), "Người dùng đã được xóa", Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(getApplicationContext(), "Có lỗi xảy ra khi xóa người dùng. Vui lòng thử lại sau", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
+    }
+
     private void loadRole(){
         spinner.setOnItemSelectedListener(this);
 
@@ -156,30 +206,214 @@ public class UserDetailActivity extends AppCompatActivity implements AdapterView
 
 
 
-    private void updateUser(String userId){
+    private void updateUser(String userId) {
+
+
+        // Lấy dữ liệu hiện tại từ Firebase
+        mUserRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                if (dataSnapshot.exists()) {
+                    String currentName = dataSnapshot.child("name").getValue(String.class);
+                    String currentEmail = dataSnapshot.child("email").getValue(String.class);
+                    String currentPhone = dataSnapshot.child("sdt").getValue(String.class);
+                    String currentAvatarUrl = dataSnapshot.child("avatarUrl").getValue(String.class);
+
+                    // So sánh và cập nhật Tên (Name)
+                    String newName = textName.getText().toString();
+                    if (!newName.equals(currentName)) {
+                        mUserRef.child("name").setValue(newName)
+                                .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                    @Override
+                                    public void onComplete(@NonNull Task<Void> task) {
+                                        if (task.isSuccessful()) {
+                                            Toast.makeText(getApplicationContext(), "Tên người dùng đã được cập nhật", Toast.LENGTH_SHORT).show();
+                                        } else {
+                                            Toast.makeText(getApplicationContext(), "Có lỗi xảy ra khi cập nhật tên. Vui lòng thử lại sau", Toast.LENGTH_SHORT).show();
+                                        }
+                                    }
+                                });
+                    }
+
+                    // So sánh và cập nhật Email
+                    String newEmail = textEmail.getText().toString();
+                    if (!newEmail.equals(currentEmail)) {
+                        mUserRef.child("email").setValue(newEmail)
+                                .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                    @Override
+                                    public void onComplete(@NonNull Task<Void> task) {
+                                        if (task.isSuccessful()) {
+                                            Toast.makeText(getApplicationContext(), "Email người dùng đã được cập nhật", Toast.LENGTH_SHORT).show();
+                                        } else {
+                                            Toast.makeText(getApplicationContext(), "Có lỗi xảy ra khi cập nhật email. Vui lòng thử lại sau", Toast.LENGTH_SHORT).show();
+                                        }
+                                    }
+                                });
+                    }
+
+                    // So sánh và cập nhật Số điện thoại (Phone)
+                    String newPhone = textPhone.getText().toString();
+                    if (!newPhone.equals(currentPhone)) {
+                        mUserRef.child("sdt").setValue(newPhone)
+                                .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                    @Override
+                                    public void onComplete(@NonNull Task<Void> task) {
+                                        if (task.isSuccessful()) {
+                                            Toast.makeText(getApplicationContext(), "Số điện thoại người dùng đã được cập nhật", Toast.LENGTH_SHORT).show();
+                                        } else {
+                                            Toast.makeText(getApplicationContext(), "Có lỗi xảy ra khi cập nhật số điện thoại. Vui lòng thử lại sau", Toast.LENGTH_SHORT).show();
+                                        }
+                                    }
+                                });
+                    }
+
+                    // So sánh và cập nhật Avatar URL
+                    if (avatarUrl != null && !avatarUrl.equals(currentAvatarUrl)) {
+                        mUserRef.child("avatarUrl").setValue(avatarUrl)
+                                .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                    @Override
+                                    public void onComplete(@NonNull Task<Void> task) {
+                                        if (task.isSuccessful()) {
+                                            Toast.makeText(getApplicationContext(), "URL avatar người dùng đã được cập nhật", Toast.LENGTH_SHORT).show();
+                                        } else {
+                                            Toast.makeText(getApplicationContext(), "Có lỗi xảy ra khi cập nhật URL avatar. Vui lòng thử lại sau", Toast.LENGTH_SHORT).show();
+                                        }
+                                    }
+                                });
+                    }
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+                // Xử lý khi có lỗi xảy ra
+                Toast.makeText(getApplicationContext(), "Có lỗi xảy ra khi lấy dữ liệu từ Firebase", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+    private void updateUser2() {
+        if(!txtPass.getText().toString().isEmpty()){
+            String newPassword = txtPass.getText().toString();
+
+            mUser.updatePassword(newPassword)
+                    .addOnCompleteListener(new OnCompleteListener<Void>() {
+                        @Override
+                        public void onComplete(@NonNull Task<Void> task) {
+                            if (task.isSuccessful()) {
+                                // Mật khẩu đã được set lại thành công
+                                Toast.makeText(getApplicationContext(), "Mật khẩu đã được set lại thành công", Toast.LENGTH_SHORT).show();
+                            } else {
+                                // Đã xảy ra lỗi khi set lại mật khẩu
+                                Toast.makeText(getApplicationContext(), "Có lỗi xảy ra khi set lại mật khẩu. Vui lòng thử lại sau", Toast.LENGTH_SHORT).show();
+                                // In ra lỗi chi tiết
+                                Exception exception = task.getException();
+                                if (exception != null) {
+                                    Log.e("FirebaseAuth", "Error updating password: " + exception.getMessage());
+                                }
+                            }
+                        }
+                    });
+
+        }
         FirebaseStorage storage = FirebaseStorage.getInstance();
         StorageReference storageRef = storage.getReference();
+
         if (selectedBitmap != null) {
             uploadImageToFirebaseStorage(storageRef, userId);
         }
-        HashMap<String,Object> hashMap = new HashMap<>();
-        hashMap.put("name",textName.getText().toString());
-        hashMap.put("email",textEmail.getText().toString());
-        hashMap.put("sdt",textPhone.getText().toString());
-        mUserRef.updateChildren(hashMap)
-                .addOnCompleteListener(new OnCompleteListener<Void>() {
-                    @Override
-                    public void onComplete(@NonNull Task<Void> task) {
-                        if (task.isSuccessful()) {
-                            // Cập nhật thành công
-                            Toast.makeText(getApplicationContext(), "Thông tin người dùng đã được cập nhật", Toast.LENGTH_SHORT).show();
-                        } else {
-                            // Xử lý khi cập nhật không thành công
-                            Toast.makeText(getApplicationContext(), "Có lỗi xảy ra. Vui lòng thử lại sau", Toast.LENGTH_SHORT).show();
-                        }
+        mUserRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (snapshot.exists()) {
+                    String name = snapshot.child("name").getValue(String.class);
+                    String email = snapshot.child("email").getValue(String.class);
+                    String sdt = snapshot.child("sdt").getValue(String.class);
+                    if (!name.equals(textName.getText().toString())){
+                        mUserRef.child("name").setValue(textName.getText().toString())
+                                .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                    @Override
+                                    public void onComplete(@NonNull Task<Void> task) {
+                                        if (task.isSuccessful()) {
+                                            Toast.makeText(getApplicationContext(), "Tên người dùng đã được cập nhật", Toast.LENGTH_SHORT).show();
+                                        } else {
+                                            Toast.makeText(getApplicationContext(), "Có lỗi xảy ra khi cập nhật tên. Vui lòng thử lại sau", Toast.LENGTH_SHORT).show();
+                                        }
+                                    }
+                                });
                     }
-                });
+                    if (!email.equals(textEmail.getText().toString())){
+                        mUserRef.child("email").setValue(textEmail.getText().toString())
+                                .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                    @Override
+                                    public void onComplete(@NonNull Task<Void> task) {
+                                        if (task.isSuccessful()) {
+                                            Toast.makeText(getApplicationContext(), "Email người dùng đã được cập nhật", Toast.LENGTH_SHORT).show();
+                                        } else {
+                                            Toast.makeText(getApplicationContext(), "Có lỗi xảy ra khi cập nhật tên. Vui lòng thử lại sau", Toast.LENGTH_SHORT).show();
+                                        }
+                                    }
+                                });
+                    }
+                    if (!sdt.equals(textPhone.getText().toString())){
+                        mUserRef.child("sdt").setValue(textPhone.getText().toString())
+                                .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                    @Override
+                                    public void onComplete(@NonNull Task<Void> task) {
+                                        if (task.isSuccessful()) {
+                                            Toast.makeText(getApplicationContext(), "Số điện thoại người dùng đã được cập nhật", Toast.LENGTH_SHORT).show();
+                                        } else {
+                                            Toast.makeText(getApplicationContext(), "Có lỗi xảy ra khi cập nhật tên. Vui lòng thử lại sau", Toast.LENGTH_SHORT).show();
+                                        }
+                                    }
+                                });
+                    }
+
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+
+            }
+        });
+
+
+//        mUserRef.child("sdt").setValue(textPhone.getText().toString())
+//                .addOnCompleteListener(new OnCompleteListener<Void>() {
+//                    @Override
+//                    public void onComplete(@NonNull Task<Void> task) {
+//                        if (task.isSuccessful()) {
+//                            Toast.makeText(getApplicationContext(), "Số điện thoại người dùng đã được cập nhật", Toast.LENGTH_SHORT).show();
+//                        } else {
+//                            Toast.makeText(getApplicationContext(), "Có lỗi xảy ra khi cập nhật số điện thoại. Vui lòng thử lại sau", Toast.LENGTH_SHORT).show();
+//                        }
+//                    }
+//                });
+//        mUserRef.child("avatarUrl").setValue(avatarUrl)
+//                .addOnCompleteListener(new OnCompleteListener<Void>() {
+//                    @Override
+//                    public void onComplete(@NonNull Task<Void> task) {
+//                        if (task.isSuccessful()) {
+//                            Toast.makeText(getApplicationContext(), "URL avatar người dùng đã được cập nhật", Toast.LENGTH_SHORT).show();
+//                        } else {
+//                            Toast.makeText(getApplicationContext(), "Có lỗi xảy ra khi cập nhật URL avatar. Vui lòng thử lại sau", Toast.LENGTH_SHORT).show();
+//                        }
+//                    }
+//                });
+//        mUserRef.child("email").setValue(textEmail.getText().toString())
+//                .addOnCompleteListener(new OnCompleteListener<Void>() {
+//                    @Override
+//                    public void onComplete(@NonNull Task<Void> task) {
+//                        if (task.isSuccessful()) {
+//                            Toast.makeText(getApplicationContext(), "Email người dùng đã được cập nhật", Toast.LENGTH_SHORT).show();
+//                        } else {
+//                            Toast.makeText(getApplicationContext(), "Có lỗi xảy ra khi cập nhật email. Vui lòng thử lại sau", Toast.LENGTH_SHORT).show();
+//                        }
+//                    }
+//                });
     }
+
+
     private void loadFriends(String s){
         Query query = mRef.child(userId).orderByChild("name").startAt(s).endAt(s+"\uf8ff");
         options = new FirebaseRecyclerOptions.Builder<Friends>().setQuery(query, Friends.class).build();
@@ -206,9 +440,9 @@ public class UserDetailActivity extends AppCompatActivity implements AdapterView
                 friendViewHolder.itemView.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-//                        Intent intent = new Intent(UserDetailActivity.this, UserDetailActivity.class);
-//                        intent.putExtra("userId",getRef(position).getKey().toString());
-//                        startActivity(intent);
+                        Intent intent = new Intent(UserDetailActivity.this, UserDetailActivity.class);
+                        intent.putExtra("userId",getRef(position).getKey().toString());
+                        startActivity(intent);
                     }
                 });
 
@@ -237,12 +471,7 @@ public class UserDetailActivity extends AppCompatActivity implements AdapterView
                         textName.setText(user.getName());
                         textEmail.setText(user.getEmail());
                         textPhone.setText(user.getSdt());
-//                        if ( user.getRole() == 0){
-//                            textRole.setText("Người dùng");
-//                        }else {
-//                            textRole.setText("Admin");
-//
-//                        }
+                        spinner.setSelection(getIndexForRole(user.getRole()));
 
                         // Hiển thị hình ảnh người dùng (sử dụng Picasso hoặc Glide)
                         if (user.getAvatarUrl() != null && !user.getAvatarUrl().isEmpty()) {
@@ -280,18 +509,13 @@ public class UserDetailActivity extends AppCompatActivity implements AdapterView
         }).addOnSuccessListener(taskSnapshot -> {
             imageRef.getDownloadUrl().addOnSuccessListener(uri -> {
                 avatarUrl = uri.toString();
-                HashMap<String,Object> hashMap = new HashMap<>();
-                hashMap.put("name",textName.getText().toString());
-                hashMap.put("email",textEmail.getText().toString());
-                hashMap.put("sdt",textPhone.getText().toString());
-                hashMap.put("avatarUrl", avatarUrl);
-                mUserRef.updateChildren(hashMap)
+                mUserRef.child("avatarUrl").setValue(avatarUrl)
                         .addOnCompleteListener(new OnCompleteListener<Void>() {
                             @Override
                             public void onComplete(@NonNull Task<Void> task) {
                                 if (task.isSuccessful()) {
                                     // Cập nhật thành công
-                                    Toast.makeText(getApplicationContext(), "Thông tin người dùng đã được cập nhật", Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(getApplicationContext(), "Ảnh người dùng đã được cập nhật", Toast.LENGTH_SHORT).show();
                                 } else {
                                     // Xử lý khi cập nhật không thành công
                                     Toast.makeText(getApplicationContext(), "Có lỗi xảy ra. Vui lòng thử lại sau", Toast.LENGTH_SHORT).show();
@@ -318,10 +542,18 @@ public class UserDetailActivity extends AppCompatActivity implements AdapterView
 
     @Override
     public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-        Toast.makeText(getApplicationContext(),
-                        roles[position],
-                        Toast.LENGTH_LONG)
-                .show();
+        mUserRef.child("role").setValue(position).addOnCompleteListener(new OnCompleteListener<Void>() {
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+                if (task.isSuccessful()) {
+                    // Cập nhật thành công
+                    Toast.makeText(getApplicationContext(), "Role đã được cập nhật", Toast.LENGTH_SHORT).show();
+                } else {
+                    // Xử lý khi cập nhật không thành công
+                    Toast.makeText(getApplicationContext(), "Có lỗi xảy ra. Vui lòng thử lại sau", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
     }
 
     @Override

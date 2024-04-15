@@ -20,6 +20,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.appchatandroidt.R;
 import com.example.appchatandroidt.adapter.UsersAdapter;
 import com.example.appchatandroidt.models.User;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
@@ -38,6 +39,7 @@ public class AdminActivity extends AppCompatActivity {
     private UsersAdapter usersAdapter;
     private ProgressBar progressBar;
     private AppCompatImageView imgDangXuat;
+    private FloatingActionButton btnaddUser;
     private List<User> userList;
 
 
@@ -51,6 +53,7 @@ public class AdminActivity extends AppCompatActivity {
         recyclerView = findViewById(R.id.user_recycler_view);
         progressBar = findViewById(R.id.progressBar);
         imgDangXuat = findViewById(R.id.imgDangXuat);
+        btnaddUser = findViewById(R.id.icNewUser);
 
         recyclerView.setHasFixedSize(true);
         recyclerView.setLayoutManager(new LinearLayoutManager(getApplicationContext()));
@@ -60,6 +63,12 @@ public class AdminActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 dangXuat();
+            }
+        });
+        btnaddUser.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(getApplicationContext(), DangKy.class));
             }
         });
 
