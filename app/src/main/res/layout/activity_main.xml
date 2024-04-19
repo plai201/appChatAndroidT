@@ -98,7 +98,7 @@
     <FrameLayout
         android:id="@+id/layoutSendImage"
         android:layout_width="140dp"
-        android:layout_height="60dp"
+        android:layout_height="45dp"
         android:layout_marginStart="12dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent">
@@ -113,7 +113,7 @@
     <FrameLayout
         android:id="@+id/layoutSendImage3"
         android:layout_width="140dp"
-        android:layout_height="60dp"
+        android:layout_height="45dp"
         android:layout_marginRight="120dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
@@ -130,7 +130,7 @@
     <FrameLayout
         android:id="@+id/layoutSendImage2"
         android:layout_width="140dp"
-        android:layout_height="60dp"
+        android:layout_height="45dp"
         android:layout_marginRight="12dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent">

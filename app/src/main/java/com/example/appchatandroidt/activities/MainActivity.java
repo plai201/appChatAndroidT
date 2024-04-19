@@ -11,6 +11,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.AppCompatImageView;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -30,6 +31,7 @@ import com.firebase.ui.database.FirebaseRecyclerOptions;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -47,8 +49,8 @@ import java.util.Date;
 import java.util.List;
 
 public class MainActivity extends BaseActivity {
-    FirebaseRecyclerOptions<Message> options;
-    FirebaseRecyclerAdapter<Message, MessageRecentViewHolder> adapter;
+    FirebaseRecyclerOptions<Conversions> options;
+    FirebaseRecyclerAdapter<Conversions, MessageRecentViewHolder> adapter;
     RecyclerView recyclerView;
     ProgressBar progressBar;
     private TextView textViewName, textViewEmail;
@@ -59,14 +61,10 @@ public class MainActivity extends BaseActivity {
     private AppCompatImageView buttonListUser;
     private AppCompatImageView buttonListFriend;
 
-    private DatabaseReference usersRef,messageRef;
+    private DatabaseReference usersRef,messageRef,conversionRef;
     private String currentUserId;
-    private PreferenceManager preferenceManager;
     private List<Conversions> conversations;
     private RecentConversationsAdapter conversationsAdapter;
-
-
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -78,6 +76,7 @@ public class MainActivity extends BaseActivity {
         currentUserId = user.getUid();
         usersRef = FirebaseDatabase.getInstance().getReference("users").child(user.getUid());
         messageRef = FirebaseDatabase.getInstance().getReference().child("message");
+        conversionRef = FirebaseDatabase.getInstance().getReference().child("conversions");
 
 
         recyclerView = findViewById(R.id.conversationsRecyclerView);
@@ -114,7 +113,7 @@ public class MainActivity extends BaseActivity {
         });
 
         loadUserProfileFromDatabase(usersRef);
-        //loadRecentConversations();
+       // loadRecentConversations();
         listenConversations();
 
     }
@@ -124,27 +123,61 @@ public class MainActivity extends BaseActivity {
         recyclerView.setAdapter(conversationsAdapter);
     }
     private void loadRecentConversations() {
-        options = new FirebaseRecyclerOptions.Builder<Message>()
-                .setQuery(messageRef, Message.class)
+        options = new FirebaseRecyclerOptions.Builder<Conversions>()
+                .setQuery(conversionRef, Conversions.class)
                 .build();
-        adapter = new FirebaseRecyclerAdapter<Message, MessageRecentViewHolder>(options) {
+        adapter = new FirebaseRecyclerAdapter<Conversions, MessageRecentViewHolder>(options) {
             @Override
-            protected void onBindViewHolder(@NonNull MessageRecentViewHolder messageRecentViewHolder, int i, @NonNull Message message) {
+            protected void onBindViewHolder(@NonNull MessageRecentViewHolder messageRecentViewHolder, int i, @NonNull Conversions conversions) {
                 String otherUserId = getRef(i).getKey();
-                DatabaseReference conversionsRef = FirebaseDatabase.getInstance().getReference()
-                        .child("conversions")
-                        .child(currentUserId + otherUserId);
-
-                conversionsRef.addValueEventListener(new ValueEventListener() {
+                Query senderConversationsQuery = conversionRef
+                        .orderByChild("senderId")
+                        .equalTo(currentUserId);
+                Query receiverConversationsQuery = conversionRef
+                        .orderByChild("receiverId")
+                        .equalTo(currentUserId);
+                senderConversationsQuery.addValueEventListener(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                        if (dataSnapshot.exists()) {
+                        for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
+                            String name = snapshot.child("receiverName").getValue(String.class);
+                            String avatarUrl = snapshot.child("receiverImage").getValue(String.class);
+                            String lastMessage = snapshot.child("lastMessage").getValue(String.class);
 
-                            String name = dataSnapshot.child("receiverName").getValue(String.class);
-                            String avatarUrl = dataSnapshot.child("receiverImage").getValue(String.class);
-                            String lastMessage = dataSnapshot.child("lastMessage").getValue(String.class);
+                            messageRecentViewHolder.textViewName.setText(name);
+                            messageRecentViewHolder.textViewName.setVisibility(View.VISIBLE);
 
-                            // Hiển thị tên người gửi
+                            messageRecentViewHolder.lastMessage.setText(lastMessage);
+                            messageRecentViewHolder.lastMessage.setVisibility(View.VISIBLE);
+
+                            messageRecentViewHolder.imageProfile.setVisibility(View.VISIBLE);
+
+                            // Load hình ảnh từ URL và hiển thị trong ImageView
+                            if (avatarUrl != null && !avatarUrl.isEmpty()) {
+                                Glide.with(messageRecentViewHolder.itemView.getContext())
+                                        .load(avatarUrl)
+                                        .into(messageRecentViewHolder.imageProfile);
+                            } else {
+                                // Nếu không có hình ảnh, sử dụng hình ảnh mặc định
+                                messageRecentViewHolder.imageProfile.setImageResource(R.drawable.default_avatar);
+                            }
+                        }
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError databaseError) {
+                        Log.e("LoadUser", "Lỗi: " + databaseError.getMessage());
+                    }
+                });
+                receiverConversationsQuery.addValueEventListener(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                        for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
+
+                            String name = snapshot.child("senderId").getValue(String.class);
+                            String avatarUrl = snapshot.child("senderImage").getValue(String.class);
+                            String lastMessage = snapshot.child("lastMessage").getValue(String.class);
+
                             messageRecentViewHolder.textViewName.setText(name);
                             messageRecentViewHolder.textViewName.setVisibility(View.VISIBLE);
 
@@ -175,7 +208,7 @@ public class MainActivity extends BaseActivity {
                     @Override
                     public void onClick(View v) {
                         Intent intent = new Intent(MainActivity.this,ChatActivity.class);
-                        intent.putExtra("OtherUserId",getRef(position).getKey().toString());
+                        intent.putExtra("OtherUserId",otherUserId);
                         startActivity(intent);
                     }
                 });
@@ -255,103 +288,52 @@ public class MainActivity extends BaseActivity {
         Query senderConversationsQuery = conversationsRef
                 .orderByChild("senderId")
                 .equalTo(currentUserId);
-        Log.d("senderChatRef", "senderChatRef"+senderConversationsQuery );
-
 
         Query receiverConversationsQuery = conversationsRef
                 .orderByChild("receiverId")
                 .equalTo(currentUserId);
-
-        senderConversationsQuery.addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                for (DataSnapshot snapshot1 : snapshot.getChildren()){
-                    String senderId = snapshot1.child("senderId").getValue(String.class);
-                    String receiverId = snapshot1.child("receiverId").getValue(String.class);
-                    Conversions conversion = new Conversions();
-                    conversion.senderId  =senderId;
-                    conversion.receiverId = receiverId;
-                    conversion.conversionImage = snapshot1.child("receiverImage").getValue(String.class);
-                    conversion.conversionName = snapshot1.child("receiverName").getValue(String.class);
-                    conversion.conversionId = snapshot1.child("receiverId").getValue(String.class);
-                    conversion.message = snapshot1.child("lastMessage").getValue(String.class);
-                    conversion.dataObject = snapshot1.child("datetime").getValue(Date.class);
-                    conversations.add(conversion);
-                }
-                conversationsAdapter.notifyDataSetChanged();
-                recyclerView.smoothScrollToPosition(0);
-                recyclerView.setVisibility(View.VISIBLE);
-                progressBar.setVisibility(View.GONE);
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-                Toast.makeText(MainActivity.this,"Khong thanh cong",Toast.LENGTH_SHORT).show();
-            }
-        });
-      receiverConversationsQuery.addValueEventListener(new ValueEventListener() {
-          @Override
-          public void onDataChange(@NonNull DataSnapshot snapshot) {
-
-              for (DataSnapshot snapshot1 : snapshot.getChildren()){
-                  String senderId = snapshot1.child("senderId").getValue(String.class);
-                  String receiverId = snapshot1.child("receiverId").getValue(String.class);
-                  Conversions conversion = new Conversions();
-                  conversion.senderId  =senderId;
-                  conversion.receiverId = receiverId;
-                  conversion.conversionImage = snapshot1.child("senderImage").getValue(String.class);
-                  conversion.conversionName = snapshot1.child("senderName").getValue(String.class);
-                  conversion.conversionId = snapshot1.child("senderId").getValue(String.class);
-                  conversion.message = snapshot1.child("lastMessage").getValue(String.class);
-                  conversion.dataObject = snapshot1.child("datetime").getValue(Date.class);
-                  conversations.add(conversion);
-              }
-              conversationsAdapter.notifyDataSetChanged();
-              recyclerView.smoothScrollToPosition(0);
-              recyclerView.setVisibility(View.VISIBLE);
-              progressBar.setVisibility(View.GONE);
-          }
-
-          @Override
-          public void onCancelled(@NonNull DatabaseError error) {
-
-          }
-      });
+        senderConversationsQuery.addValueEventListener(conversationsEventListener);
+        receiverConversationsQuery.addValueEventListener(conversationsEventListener);
+//            @Override
+//            public void onChildChanged(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
+//                for (int i = 0; i < conversations.size() ; i++){
+//                    String senderId = snapshot.child("senderId").getValue(String.class);
+//                    String receiverId = snapshot.child("receiverId").getValue(String.class);
+//                    if(conversations.get(i).senderId.equals(senderId)&& conversations.get(i).receiverId.equals(receiverId)){
+//                        conversations.get(i).message = snapshot.child("lastMessage").getValue(String.class);
+//                        conversations.get(i).dataObject = snapshot.child("datetime").getValue(Date.class);
+//                        break;
+//                    }
+//
+//
     }
 
-    private final ValueEventListener conversationsEventListener = new ValueEventListener() {
+        private final ValueEventListener conversationsEventListener = new ValueEventListener() {
         @Override
         public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-            conversations.clear(); // Xóa dữ liệu cũ trước khi thêm dữ liệu mới
-
-            for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
-                String senderId = snapshot.child(Constants.KEY_SENDER_ID).getValue(String.class);
-                String receiverId = snapshot.child(Constants.KEY_RECEIVER_ID).getValue(String.class);
-                String sms = snapshot.child("lastMessage").getValue(String.class);
-
-                Conversions chatMessage = new Conversions();
-                chatMessage.senderId = senderId;
-                chatMessage.receiverId = receiverId;
+            conversations.clear();
+                for (DataSnapshot snapshot1 : dataSnapshot.getChildren()) {
+                String senderId = snapshot1.child("senderId").getValue(String.class);
+                String receiverId = snapshot1.child("receiverId").getValue(String.class);
+                Conversions conversion = new Conversions();
+                conversion.senderId  =senderId;
+                conversion.receiverId = receiverId;
 
 
                 if (currentUserId.equals(senderId)) {
-                    chatMessage.conversionImage = snapshot.child(Constants.KEY_RECEIVER_IMAGE).getValue(String.class);
-                    chatMessage.conversionName = snapshot.child(Constants.KEY_RECEIVER_NAME).getValue(String.class);
-                    chatMessage.conversionId = snapshot.child(Constants.KEY_RECEIVER_ID).getValue(String.class);
+                    conversion.conversionImage = snapshot1.child("receiverImage").getValue(String.class);
+                    conversion.conversionName = snapshot1.child("receiverName").getValue(String.class);
+                    conversion.conversionId = snapshot1.child("receiverId").getValue(String.class);
 
                 } else {
-                    chatMessage.conversionImage = snapshot.child(Constants.KEY_SENDER_IMAGE).getValue(String.class);
-                    chatMessage.conversionName = snapshot.child(Constants.KEY_SENDER_NAME).getValue(String.class);
-                    chatMessage.conversionId = snapshot.child(Constants.KEY_SENDER_ID).getValue(String.class);
+                    conversion.conversionImage = snapshot1.child("senderImage").getValue(String.class);
+                    conversion.conversionName = snapshot1.child("senderName").getValue(String.class);
+                    conversion.conversionId = snapshot1.child("senderId").getValue(String.class);
                 }
-
-                chatMessage.message = sms;
-                chatMessage.dataObject = snapshot.child("datetime").getValue(Date.class);;
-
-                conversations.add(chatMessage);
+                conversion.message = snapshot1.child("lastMessage").getValue(String.class);
+                conversion.dataObject = snapshot1.child("timestamp").getValue(Date.class);
+                conversations.add(conversion);
             }
-
-
             Collections.sort(conversations, (o1, o2) -> o2.dataObject.compareTo(o1.dataObject));
             conversationsAdapter.notifyDataSetChanged();
             recyclerView.smoothScrollToPosition(0);

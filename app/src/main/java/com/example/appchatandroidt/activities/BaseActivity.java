@@ -47,8 +47,6 @@ public class BaseActivity extends AppCompatActivity {
         userRef.child("status").setValue(status);
         if (status.equals("offline")) {
             userRef.child("lastActive").setValue(ServerValue.TIMESTAMP);
-        } else {
-            userRef.child("lastActive").setValue("online");
         }
     }
 

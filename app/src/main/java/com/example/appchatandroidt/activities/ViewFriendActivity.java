@@ -271,10 +271,15 @@ public class ViewFriendActivity extends BaseActivity {
                                                 conversationMap.put("receiverName", name_);
                                                 conversationMap.put("receiverImage", img_profile_url);
                                                 conversationMap.put("senderImage", myproFileImage);
-                                                conversationMap.put("datetime", getReadableDateTime(new Date()));
-
-                                                // Thêm dữ liệu cuộc trò chuyện vào nút tin nhắn của mUser
-                                                conversionRef.child(mUser.getUid()+userId).setValue(conversationMap);
+                                                conversationMap.put("timestamp", new Date());
+                                                String newConversionKey = conversionRef.push().getKey(); // Tạo một key mới cho conversion
+                                                conversionRef.child(newConversionKey).setValue(conversationMap)
+                                                        .addOnSuccessListener(aVoid -> {
+                                                            Toast.makeText(ViewFriendActivity.this,"Thêm bạn bè thành công hãy gửi một tin nhắn mới",Toast.LENGTH_SHORT).show();
+                                                        })
+                                                        .addOnFailureListener(e -> {
+                                                            // Xử lý khi thêm conversion thất bại
+                                                        });;
                                             } else {
                                                 Toast.makeText(ViewFriendActivity.this, "Lỗi khi cập nhật thông tin người nhận yêu cầu", Toast.LENGTH_SHORT).show();
                                             }

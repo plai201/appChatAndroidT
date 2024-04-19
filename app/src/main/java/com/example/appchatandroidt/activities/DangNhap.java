@@ -30,7 +30,7 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
 public class DangNhap extends AppCompatActivity {
-    private TextView textViewDangKy;
+    private TextView textViewDangKy,textViewRestPass;
     private EditText editTextEmail, editTextPassword;
     private MaterialButton buttonDangNhap;
     private FirebaseAuth mAuth;
@@ -47,6 +47,7 @@ public class DangNhap extends AppCompatActivity {
         editTextPassword = findViewById(R.id.inputPass);
         buttonDangNhap = findViewById(R.id.btnDangNhap);
         textViewDangKy = findViewById(R.id.txtDangKy);
+        textViewRestPass = findViewById(R.id.resetPW);
 
         //Kiểm tra xem người dùng đã đăng nhập chưa
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
@@ -68,6 +69,7 @@ public class DangNhap extends AppCompatActivity {
 
     void setListeners() {
         textViewDangKy.setOnClickListener(v -> startActivity(new Intent(getApplicationContext(), DangKy.class)));
+        textViewRestPass.setOnClickListener(v -> startActivity(new Intent(getApplicationContext(), ForgotPassword.class)));
     }
     private void dangNhap() {
         String email = editTextEmail.getText().toString().trim();

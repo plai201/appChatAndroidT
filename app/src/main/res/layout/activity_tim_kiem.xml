@@ -48,7 +48,7 @@
             android:layout_height="wrap_content"
             android:background="@drawable/edit_text"
             android:layout_margin="10dp"
-            android:hint="Username"
+            android:hint="Nhập số điện thoại"
             android:padding="10dp"
             android:elevation="4dp"
             android:layout_toLeftOf="@id/search_user_btn"

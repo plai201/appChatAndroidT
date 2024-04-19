@@ -28,7 +28,9 @@ import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
+import com.bumptech.glide.util.LogTime;
 import com.example.appchatandroidt.R;
+import com.example.appchatandroidt.adapter.ChatAdapter;
 import com.example.appchatandroidt.models.Conversions;
 import com.example.appchatandroidt.models.Message;
 import com.example.appchatandroidt.models.User;
@@ -50,6 +52,7 @@ import com.google.firebase.database.ServerValue;
 import com.google.firebase.database.ValueEventListener;
 import com.makeramen.roundedimageview.RoundedImageView;
 
+import org.checkerframework.checker.units.qual.A;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -64,6 +67,8 @@ import java.util.Locale;
 import java.util.Map;
 
 public class ChatActivity extends BaseActivity {
+    private List<Message> chatMessages;
+    private ChatAdapter chatAdapter;
     ProgressBar progressBar;
     RecyclerView recyclerView;
     EditText inputSms;
@@ -124,11 +129,10 @@ public class ChatActivity extends BaseActivity {
             }
         });
         loadMyProfile();
+        checkForConversion();
 
 
        loadMessages();
-       conversions = new ArrayList<>();
-     // listenMessages();
 
 
         btnSendImage.setOnClickListener(new View.OnClickListener() {
@@ -141,6 +145,16 @@ public class ChatActivity extends BaseActivity {
             }
         });
 
+    }
+    private void init(){
+        chatMessages = new ArrayList<>();
+        chatAdapter = new ChatAdapter(
+                chatMessages,
+                otherUserProFileUrl,
+                otherUserId,
+                this
+        );
+        recyclerView.setAdapter(chatAdapter);
     }
 
     private void loadMyProfile(){
@@ -191,27 +205,22 @@ public class ChatActivity extends BaseActivity {
         adapter = new FirebaseRecyclerAdapter<Message, ChatViewHolder>(options) {
             @Override
             protected void onBindViewHolder(@NonNull ChatViewHolder chatViewHolder, int i, @NonNull Message message) {
-                Log.d("OPPPPPPPPP", "loadMessages: "+message.getSms());
 
                 if (message.isSentByCurrentUser()) {
                     if (message.isImageMessage()) {
                         // Tin nhắn gửi là tin nhắn hình ảnh
-                        chatViewHolder.bindSentMessage(message.getSms(), "iv",getReadableDateTime(new Date()));
+                        chatViewHolder.bindSentMessage(message.getSms(), "iv", message.getDatetime());
                     } else {
                         // Tin nhắn gửi là tin nhắn văn bản
-                        chatViewHolder.bindSentMessage(message.getSms(), "text",getReadableDateTime(new Date()));
-                        Log.d("OPPPPPPPPP", "loadMessages: "+message.getSms());
-
-
+                        chatViewHolder.bindSentMessage(message.getSms(), "text",message.getDatetime());
                     }
                 } else {
                     if (message.isImageMessage()) {
                         // Tin nhắn nhận là tin nhắn hình ảnh
-                        chatViewHolder.bindReceivedMessage(message.getSms(), otherUserProFileUrl, "iv",getReadableDateTime(new Date()));
+                        chatViewHolder.bindReceivedMessage(message.getSms(), otherUserProFileUrl, "iv",message.getDatetime());
                     } else {
                         // Tin nhắn nhận là tin nhắn văn bản
-                        chatViewHolder.bindReceivedMessage(message.getSms(), otherUserProFileUrl, "text",getReadableDateTime(new Date()));
-                        Log.d("OPPPPPPPPP", "loadMessages: "+message.getSms());
+                        chatViewHolder.bindReceivedMessage(message.getSms(), otherUserProFileUrl, "text",message.getDatetime());
 
                     }
                 }
@@ -237,6 +246,15 @@ public class ChatActivity extends BaseActivity {
                     return 0; // Tin nhắn gửi
                 } else {
                     return 1; // Tin nhắn nhận
+                }
+            }
+
+            @Override
+            public void onDataChanged() {
+                super.onDataChanged();
+                int itemCount = adapter.getItemCount();
+                if (itemCount > 0) {
+                    recyclerView.scrollToPosition(itemCount - 1);
                 }
             }
         };
@@ -267,63 +285,22 @@ public class ChatActivity extends BaseActivity {
                             @Override
                             public void onComplete(@NonNull Task<Void> task) {
                                 if (task.isSuccessful()) {
-                                    // Tạo dữ liệu cuộc trò chuyện
-
-//                                    Query que1 = conversionRef.orderByChild("senderId")
-//                                            .equalTo(otherUserId)
-//                                            .orderByChild("receiverId")
-//                                            .equalTo(mUser.getUid());
-//
-//                                    Query que2 = conversionRef.orderByChild("senderId")
-//                                            .equalTo(mUser.getUid())
-//                                            .orderByChild("receiverId")
-//                                            .equalTo(otherUserId);
-//                                    Log.d("OPPPPPPPPPque1", "loadMessages1: "+que1);
-//                                    Log.d("OPPPPPPPPPque1", "loadMessages2: "+que2);
-//
-//
-//                                    que1.addListenerForSingleValueEvent(new ValueEventListener() {
-//                                        @Override
-//                                        public void onDataChange(@NonNull DataSnapshot snapshot) {
-//                                            if (snapshot.exists()) {
-//                                                // Nếu có dữ liệu từ Query 1, tức là cuộc trò chuyện đã tồn tại
-//                                                updateConversion(sms);
-//                                            } else {
-//                                                // Không có dữ liệu từ Query 1, kiểm tra Query 2
-//                                                que2.addListenerForSingleValueEvent(new ValueEventListener() {
-//                                                    @Override
-//                                                    public void onDataChange(@NonNull DataSnapshot snapshot) {
-//                                                        if (snapshot.exists()) {
-//                                                            // Nếu có dữ liệu từ Query 2, tức là cuộc trò chuyện đã tồn tại
-//                                                            updateConversion(sms);
-//                                                        } else {
-//                                                            // Không có dữ liệu từ cả hai Query, tạo mới cuộc trò chuyện với tin nhắn đầu tiên
-//                                                            HashMap<String, Object> conversationMap = new HashMap<>();
-//                                                            conversationMap.put("senderId", mUser.getUid());
-//                                                            conversationMap.put("receiverId", otherUserId);
-//                                                            conversationMap.put("lastMessage", sms);
-//                                                            conversationMap.put("senderName", userName);
-//                                                            conversationMap.put("receiverName", otherUserName);
-//                                                            conversationMap.put("receiverImage", otherUserProFileUrl);
-//                                                            conversationMap.put("senderImage", userImageUrl);
-//                                                            conversationMap.put("datetime", new Date());
-//                                                            addConversion(conversationMap);
-//                                                        }
-//                                                    }
-//
-//                                                    @Override
-//                                                    public void onCancelled(@NonNull DatabaseError error) {
-//                                                        // Xử lý khi truy vấn bị hủy
-//                                                    }
-//                                                });
-//                                            }
-//                                        }
-//
-//                                        @Override
-//                                        public void onCancelled(@NonNull DatabaseError error) {
-//                                            // Xử lý khi truy vấn bị hủy
-//                                        }
-//                                    });
+                                    checkForConversion();
+                                    Log.d("CheckForConversion",""+conversionId);
+                                    if (conversionId != null){
+                                        updateConversion(sms);
+                                    }else {
+                                        HashMap<String, Object> conversationMap = new HashMap<>();
+                                        conversationMap.put("senderId", mUser.getUid());
+                                        conversationMap.put("receiverId", otherUserId);
+                                        conversationMap.put("lastMessage", sms);
+                                        conversationMap.put("senderName", userName);
+                                        conversationMap.put("receiverName", otherUserName);
+                                        conversationMap.put("receiverImage", otherUserProFileUrl);
+                                        conversationMap.put("senderImage", userImageUrl);
+                                        conversationMap.put("timestamp", new Date());
+                                        addConversion(conversationMap);
+                                    }
 
                                     sendNotification(sms);
                                     inputSms.setText(null);
@@ -397,7 +374,10 @@ public class ChatActivity extends BaseActivity {
                                 String timeAgo = calculateTimeSinceLastActive(lastActive);
                                 txtAvailability.setText(timeAgo);
                             }else {
+                                txtAvailability.setBackgroundResource(R.color.accent);
                                 txtAvailability.setText("online");
+                                txtAvailability.setVisibility(View.VISIBLE);
+
                             }
                         }
 
@@ -434,43 +414,35 @@ public class ChatActivity extends BaseActivity {
     }
     private void listenMessages() {
         Query senderChatRef = smsRef
+                .child(otherUserId)
+                .child(mUser.getUid())
+                .orderByChild("senderId")
+                .equalTo(otherUserId);
+        Query receiverChatRef = smsRef
                 .child(mUser.getUid())
                 .child(otherUserId)
-                .orderByChild("userId")
+                .orderByChild("receiverId")
                 .equalTo(otherUserId);
-
-        senderChatRef.addValueEventListener(new ValueEventListener() {
+        senderChatRef.addChildEventListener(new ChildEventListener() {
             @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                int count = conversions.size();
-
-
+            public void onChildAdded(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
+                int count = chatMessages.size();
                 for (DataSnapshot dataSnapshot : snapshot.getChildren()) {
-                    Conversions conversion = new Conversions();
-                    conversion.senderId = dataSnapshot.child("senderId").getValue(String.class);
-                    conversion.receiverId = dataSnapshot.child("receiverId").getValue(String.class);
-                    conversion.message = dataSnapshot.child("sms").getValue(String.class);
-                    conversion.dataObject = dataSnapshot.child("datetime").getValue(Date.class);
-                    conversions.add(conversion);
+                    Message chatmessage = dataSnapshot.getValue(Message.class);
+                    chatMessages.add(chatmessage);
                 }
-
-                Collections.sort(conversions, (o1, o2) -> o1.dataObject.compareTo(o2.dataObject));
+//                Collections.sort(conversions, (o1, o2) -> o1.dataObject.compareTo(o2.dataObject));
 
                 if (count == 0) {
                     // Nếu đây là tin nhắn đầu tiên, cần thông báo toàn bộ dữ liệu đã thay đổi
-                    recyclerView.getAdapter().notifyDataSetChanged();
+                    chatAdapter.notifyDataSetChanged();
                 } else {
                     // Nếu không phải tin nhắn đầu tiên, thông báo vị trí bắt đầu và kết thúc tin nhắn mới được thêm vào
-                    recyclerView.getAdapter().notifyItemRangeInserted(count, conversions.size() - count);
+                    chatAdapter.notifyItemRangeInserted(chatMessages.size(),chatMessages.size());
 
                     // Di chuyển RecyclerView đến vị trí tin nhắn mới nhất
                     recyclerView.smoothScrollToPosition(conversions.size() - 1);
                 }
-
-                // Cập nhật số lượng tin nhắn đã có
-                count = conversions.size();
-
-                // Hiển thị RecyclerView nếu đã ẩn
                 recyclerView.setVisibility(View.VISIBLE);
                 progressBar.setVisibility(View.GONE);
 
@@ -480,50 +452,81 @@ public class ChatActivity extends BaseActivity {
             }
 
             @Override
+            public void onChildChanged(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
+
+            }
+
+            @Override
+            public void onChildRemoved(@NonNull DataSnapshot snapshot) {
+
+            }
+
+            @Override
+            public void onChildMoved(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
+
+            }
+
+            @Override
             public void onCancelled(@NonNull DatabaseError error) {
-                // Xử lý khi có lỗi xảy ra
+
             }
         });
+        receiverChatRef.addChildEventListener(new ChildEventListener() {
+            @Override
+            public void onChildAdded(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
+                int count = chatMessages.size();
+                for (DataSnapshot dataSnapshot : snapshot.getChildren()) {
+                    Message chatmessage = new Message();
+                    chatmessage.setUserId(dataSnapshot.child("senderId").getValue(String.class));
+                    chatmessage.setSms(dataSnapshot.child("sms").getValue(String.class));
+                    chatMessages.add(chatmessage);
+
+                }
+
+
+//                Collections.sort(conversions, (o1, o2) -> o1.dataObject.compareTo(o2.dataObject));
+
+                if (count == 0) {
+                    // Nếu đây là tin nhắn đầu tiên, cần thông báo toàn bộ dữ liệu đã thay đổi
+                    chatAdapter.notifyDataSetChanged();
+                } else {
+                    // Nếu không phải tin nhắn đầu tiên, thông báo vị trí bắt đầu và kết thúc tin nhắn mới được thêm vào
+                    chatAdapter.notifyItemRangeInserted(chatMessages.size(),chatMessages.size());
+
+                    // Di chuyển RecyclerView đến vị trí tin nhắn mới nhất
+                    recyclerView.smoothScrollToPosition(conversions.size() - 1);
+                }
+                // Hiển thị RecyclerView nếu đã ẩn
+                recyclerView.setVisibility(View.VISIBLE);
+                progressBar.setVisibility(View.GONE);
+
+                if (conversionId == null) {
+                    //checkForConversion();
+                }
+            }
+
+            @Override
+            public void onChildChanged(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
+
+            }
+
+            @Override
+            public void onChildRemoved(@NonNull DataSnapshot snapshot) {
+
+            }
+
+            @Override
+            public void onChildMoved(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
+
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+
+            }
+        });
+
     }
-//
-//    private final ChildEventListener eventListener = new ChildEventListener() {
-//        @Override
-//        public void onChildAdded(@NonNull DataSnapshot dataSnapshot, @Nullable String previousChildName) {
-//            Message chatMessage = dataSnapshot.getValue(Message.class);
-//            if (chatMessage != null) {
-//                chatMessages.add(chatMessage);
-//
-//                if (adapter == null) {
-//                    recyclerView.setAdapter(adapter);
-//                } else {
-//                    adapter.notifyDataSetChanged();
-//                }
-//
-//                recyclerView.setVisibility(View.VISIBLE);
-//                recyclerView.smoothScrollToPosition(chatMessages.size() - 1);
-//            }
-//        }
-//
-//        @Override
-//        public void onChildChanged(@NonNull DataSnapshot dataSnapshot, @Nullable String previousChildName) {
-//            // Xử lý khi có sự thay đổi trong tin nhắn (nếu cần)
-//        }
-//
-//        @Override
-//        public void onChildRemoved(@NonNull DataSnapshot dataSnapshot) {
-//            // Xử lý khi tin nhắn bị xóa (nếu cần)
-//        }
-//
-//        @Override
-//        public void onChildMoved(@NonNull DataSnapshot dataSnapshot, @Nullable String previousChildName) {
-//            // Xử lý khi tin nhắn được di chuyển (nếu cần)
-//        }
-//
-//        @Override
-//        public void onCancelled(@NonNull DatabaseError databaseError) {
-//            // Xử lý khi có lỗi xảy ra
-//        }
-//    };
 
     private void addConversion(HashMap<String, Object> conversion) {
         DatabaseReference conversionsRef = FirebaseDatabase.getInstance().getReference("conversions");
@@ -545,7 +548,7 @@ public class ChatActivity extends BaseActivity {
 
             Map<String, Object> updateData = new HashMap<>();
             updateData.put(Constants.KEY_LAST_MESSAGE, message);
-            updateData.put(Constants.KEY_TIMESTAMP, ServerValue.TIMESTAMP);
+            updateData.put(Constants.KEY_TIMESTAMP, new Date());
 
             conversionRef.updateChildren(updateData)
                     .addOnSuccessListener(aVoid -> {
@@ -563,23 +566,21 @@ public class ChatActivity extends BaseActivity {
 
 
     private void checkForConversion() {
-        if (conversions.size() != 0) {
-            checkForConversionRemotely(mUser.getUid(),otherUserId);
-            checkForConversionRemotely(otherUserId, mUser.getUid());
-        }
-    }
+        checkForConversionRemotely(mUser.getUid(),otherUserId);
+        checkForConversionRemotely(otherUserId,mUser.getUid());
+     }
 
     private void checkForConversionRemotely(String senderId, String receiverId) {
-        DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference("conversions");
-        Query query = databaseReference.orderByChild("senderId").equalTo(senderId)
-                        .orderByChild("receiverId").equalTo(receiverId);
+        Query query = conversionRef.orderByChild("senderId").equalTo(senderId);
         query.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                if (dataSnapshot.exists()) {
-
-                    conversionId = dataSnapshot.getKey();
+                for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
+                    if (snapshot.child("receiverId").getValue().toString().equals(receiverId)) {
+                        conversionId = snapshot.getKey();
+                    }
                 }
+                // Xử lý trường hợp không tìm thấy dữ liệu phù hợp
             }
 
             @Override
@@ -587,32 +588,9 @@ public class ChatActivity extends BaseActivity {
                 // Xử lý khi có lỗi xảy ra
             }
         });
-    }private void checkForConversion(String senderId, String receiverId) {
-        DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference("conversions");
-
-        Query query = databaseReference.orderByChild("senderId").equalTo(senderId);
-
-        query.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
-                    String currentReceiverId = snapshot.child("receiverId").getValue(String.class);
-                    if (currentReceiverId != null && currentReceiverId.equals(receiverId)) {
-                        // Cuộc trò chuyện giữa senderId và receiverId đã tồn tại
-                        conversionId = snapshot.getKey();
-                        return;
-                    }
-                }
-
-                // Không tìm thấy cuộc trò chuyện, conversionId sẽ được giữ nguyên là null
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-                // Xử lý khi truy vấn bị hủy
-            }
-        });
     }
+
+
 
 
 
